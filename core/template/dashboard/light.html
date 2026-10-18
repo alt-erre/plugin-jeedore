@@ -1,0 +1,82 @@
+<div class="eqLogic-widget eqLogic allowResize jeedomAlreadyPosition ui-draggable ui-draggable-handle ui-draggable-disabled">
+    <span style="display:inline-block;" class="cmd cmd-widget" data-type="action" data-subtype="slider" data-cmd_id="#setLevelId#" data-cmd_uid="#uid#" data-version="#version#" data-eqLogic_id="#eqLogic_id#">
+        <div class="cmdName" style="font-weight: bold;font-size : 12px;margin-left:4px">#name_display#</div>
+        <span class="pull-left">
+            <span style="display:inline-bock;" class="cmd tooltips cmd-widget cursor" data-type="action" data-subtype="other" data-cmd_id="#toggleId#" data-cmd_uid="#toggleUid#" data-version="#version#" data-eqLogic_id="#eqLogic_id#">
+                    <span class="value#setLevelUid#" style="display:nones; font-weight:bold;position: absolute;z-index: 1;padding-left: 83px;padding-top: 39px;"></span>
+                    <img  class="img#eqLogicId#" src='#iconPath#' width="95" height="105"/>
+            </span>
+        </span>
+        <span class="pull-left" style="margin:0px;">
+            <span>
+                <div style="display:block" class="cmd tooltips cmd-widget cursor" data-type="action" data-subtype="other" data-cmd_id="#levelonId#" data-cmd_uid="#levelonUid#" data-version="#version#" data-eqLogic_id="#eqLogic_id#">
+                    <span style="font-size: 2em;font-weight: bold;" class="iconCmd"><i class="icon jeedomapp-fleche-haut-line"></i></span>
+                </div> 
+                <div style="display:block" class="cmd tooltips cmd-widget cursor" data-type="action" data-subtype="other" data-cmd_id="#leveloffId#" data-cmd_uid="#leveloffUid#" data-version="#version#" data-eqLogic_id="#eqLogic_id#">
+                        <span style="font-size: 2em;font-weight: bold;" class="iconCmd"><i class="icon jeedomapp-fleche-bas-line"></i></span>
+                </div> 
+            </span>
+        </span>
+        <span class="pull-right">
+            <div style="#hideSlider#">
+                <div class="slider" style="margin : 5px 10px 8px 2px;width: 10px;" value="#state#"></div>
+            </div>
+        </span>
+    </span>
+</div>
+        
+<script>
+    $(function(){
+    if(#setLevelAvailable#){
+        $(".cmd[data-cmd_uid=#setLevelUid#] .slider.slider-vertical").css('z-index',1);
+        jeedom.cmd.update['#setLevelId#'] = function(_options){
+            $(".cmd[data-cmd_id=#setLevelId#] .slider").slider({
+                orientation: "vertical",
+                min: ('#minValue#' == '') ? 0 : parseInt('#minValue#'),
+                max: ('#maxValue#' == '') ? 100 : parseInt('#maxValue#'),
+                value: ('#state#' == '') ? 0 : parseInt(_options.display_value),
+                slide: function(event, ui) {
+                    $(".value#setLevelUid#").show()
+                    $(".value#setLevelUid#").html(ui.value);
+                }});
+        };
+        $(".cmd[data-cmd_id=#setLevelId#] .slider").on('slidestop', function (event,ui) {
+            jeedom.cmd.execute({id: '#setLevelId#', value: {slider: ui.value}});
+            $(".value#setLevelUid#").hide();
+        });
+        jeedom.cmd.update['#setLevelId#']({display_value:'#state#'});
+    }
+
+    $('.cmd[data-cmd_uid=#levelonUid#]').on('click', function() {
+        jeedom.cmd.execute({id: '#levelonId#'});
+    }); 
+
+    $('.cmd[data-cmd_uid=#leveloffUid#]').on('click', function() {
+        jeedom.cmd.execute({id: '#leveloffId#'});
+    }); 
+
+  var jeedoreRefreshLight = function() {
+        $.ajax({
+            type: "POST",
+            url: 'plugins/jeedore/core/ajax/jeedore.ajax.php',
+            data: {
+                action: 'lightState',
+                id: "#eqLogicId#"
+            },
+            dataType: 'json',
+            global : false,
+            success: function (data) {
+                $('.img#eqLogicId#').attr('src', data.result);
+            },
+            error: function (data) {
+                console.log('error on light template :-(');
+                console.log(data);
+            }
+            });
+    };
+    if (typeof window['plugin_jeedore_timer_light_#eqLogicId#'] !== 'undefined') 
+        clearInterval(window['plugin_jeedore_timer_light_#eqLogicId#']);
+    window['plugin_jeedore_timer_light_#eqLogicId#'] = setInterval(jeedoreRefreshLight, 3000);  
+    });
+</script>
+

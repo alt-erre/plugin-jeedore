@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<info>
+    <id>jeedore</id>
+    <name>JeeDore</name>
+    <description>Plugin pour utiliser DeltaDore</description>
+    <icon>fa fa-rebel</icon>
+    <licence>MIT</licence>
+    <author>Nicolas Arfeuil</author>
+    <installation>Aucun</installation>
+    <require>2.3.5</require>
+    <version>1.7.3</version>
+    <category>automation protocol</category>
+    <allowRemote>1</allowRemote>
+	<hasOwnDeamon>1</hasOwnDeamon>
+	<hasDependency>1</hasDependency>
+</info>
+

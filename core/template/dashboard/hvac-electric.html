@@ -1,0 +1,84 @@
+<div class="eqLogic-widget eqLogic allowResize jeedomAlreadyPosition ui-draggable ui-draggable-handle ui-draggable-disabled">
+        <div class="cmd #history# tooltips cmd-widget" data-type="info" data-subtype="numeric" data-cmd_id="#setPointId#" data-cmd_uid="#setPointUid#" data-version="#setPointVersion#" data-eqLogic_id="#eqLogic_id#">
+        <div style="font-weight: bold;font-size : 12px;">#name_display#</div>
+        <span class="pull-left">
+            <img  class="img#eqLogicId#" src='#iconPath#' width="95" height="105"/>
+            <span class="value#setPointUid#" style="#setPointDisplay#;font-weight:bold;position: absolute;z-index: 1;padding: 2px 5px 2px 5px;border-radius:5px;top: 16%;left: 36%;transform: translate(-50%, 150%);">#setpoint#</span>
+            <span class="temperature#eqLogicId#" style="font-weight:bold;position: absolute;z-index: 1;padding: 2px 5px 2px 5px;border-radius:5px;top: 32%;left: 36%;transform: translate(-50%, 150%);">#temperature#</span>
+            <span class="thermiclevel#eqLogicId#" style="font-weight:bold;position: absolute;z-index: 1;padding: 2px 5px 2px 5px;border-radius:5px;top: 55%;left: 36%;transform: translate(-50%, 150%);">#thermiclevel#</span>
+        </span>
+        <span class="pull-right">
+            <div style="display:inline-block;">
+                <div class="slider" style="margin : 5px 10px 8px 10px;width: 10px;" value="#setpoint#"></div>
+            </div>
+        </span>
+    <script>
+        if(#setPointAvailable#){
+            jeedom.cmd.update['#setPointId#'] = function(_options){
+                $(".cmd[data-cmd_id=#setPointId#] .slider").slider({
+                    orientation: "vertical",
+                    min: ('#minValue#' == '') ? 0 : parseInt('#minValue#'),
+                    max: ('#maxValue#' == '') ? 100 : parseInt('#maxValue#'),
+                    value: ('#setpoint#' == '') ? 0 : parseInt(_options.display_value),
+                    slide: function(event, ui) {
+                        $(".value#setPointUid#").html(ui.value);
+                    }
+                });
+            }
+            jeedom.cmd.update['#setPointId#']({display_value:'#setpoint#'});
+
+        }
+
+        if(#setPointAvailable#){
+            $('.iconCmd#setPointUid#').off().on('click', function() {
+                if ($(this).attr('data-state') == 'on') {
+                    var value = ('#minValue#' == '') ? 0 : parseInt('#minValue#');
+                    jepostedom.cmd.execute({id: '#setPointId#', value: {slider: value}});
+                } else {
+                    var value = ('#minValue#' == '') ? 100 : parseInt('#maxValue#');
+                    jeedom.cmd.execute({id: '#setPointId#', value: {slider: value}});
+                }
+            });
+            $(".cmd[data-cmd_uid=#setPointUid#] .slider").on('slidestop', function (event,ui) {
+                jeedom.cmd.execute({id: '#setPointId#', value: {slider: ui.value}});
+            });
+        }
+
+        if(#thermiclevelAvailable#){
+            $('.thermiclevel#eqLogicId#').on('click', function(){
+                jeedom.cmd.execute({id: '#thermicLevelId#'});
+            });
+        }
+        var jeedoreRefreshElectric = function() {
+            $.ajax({
+                type: "POST",
+                url: 'plugins/jeedore/core/ajax/jeedore.ajax.php',
+                data: {
+                    action: 'electricState',
+                    id: "#eqLogicId#"
+                },
+                dataType: 'json',
+                global : false,
+                success: function (data) {
+                    $('.temperature#eqLogicId#').html(data.result.temperature);
+                    if(#setPointAvailable#){
+                        $('.value#setPointUid#').html(data.result.setPoint);
+                    }
+                    $('.img#eqLogicId#').attr('src', data.result.img);
+                    if(#thermiclevelAvailable#){
+                        $('.thermiclevel#eqLogicId#').html(data.result.thermiclevel);
+                    }
+                },
+                error: function (data) {
+                    console.log('error on electric template :-(');
+                    console.log(data);
+                }
+            });
+        };
+        if (typeof window['plugin_jeedore_timer_electric_#eqLogicId#'] !== 'undefined') 
+            clearInterval(window['plugin_jeedore_timer_electric_#eqLogicId#']);
+        window['plugin_jeedore_timer_electric_#eqLogicId#'] = setInterval(jeedoreRefreshElectric, 3000);  
+
+    </script>
+</div> 
+</div> 

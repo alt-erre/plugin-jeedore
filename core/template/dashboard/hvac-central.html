@@ -1,0 +1,46 @@
+<div class="eqLogic-widget eqLogic allowResize jeedomAlreadyPosition ui-draggable ui-draggable-handle ui-draggable-disabled">
+    <span style="display:inline-block;" class="cmd cmd-widget" data-type="action" data-subtype="slider" data-cmd_id="#setLevelId#" data-cmd_uid="#uid#" data-version="#version#" data-eqLogic_id="#eqLogic_id#">
+        <div class="cmdName" style="font-weight: bold;font-size : 12px;margin-left:4px">#name_display#</div>
+        <span class="pull-left" style="margin:0px;">
+            <div style="#normalDisplay#" class="cmd tooltips cmd-widget cursor" data-type="action" data-subtype="other" data-cmd_id="#normalId#" data-cmd_uid="#normalUid#" data-version="#normalVersion#" data-eqLogic_id="#eqLogic_id#">
+                <span style="font-size: 2em;font-weight: bold;" class="iconCmd"><i class="icon jeedomapp-fleche-haut-line"></i></span>normal
+            </div> 
+            <div style="#absenceDisplay#" class="cmd tooltips cmd-widget cursor" data-type="action" data-subtype="other" data-cmd_id="#absenceId#" data-cmd_uid="#absenceUid#" data-version="#absenceVersion#" data-eqLogic_id="#eqLogic_id#">
+                <span style="font-size: 2em;font-weight: bold;" class="iconCmd"><i class="icon jeedomapp-fleche-bas-line"></i></span>absence
+            </div> 
+        </span>
+        <span class="pull-left" style="margin:0px;">
+            <div style="#heatingDisplay#" class="cmd tooltips cmd-widget cursor" data-type="action" data-subtype="other" data-cmd_id="#heatingId#" data-cmd_uid="#heatingUid#" data-version="#heatingVersion#" data-eqLogic_id="#eqLogic_id#">
+                <span style="font-size: 2em;font-weight: bold;" class="iconCmd"><i class="icon jeedomapp-fleche-bas-line"></i></span>heating
+            </div> 
+            <div style="#stopDisplay#" class="cmd tooltips cmd-widget cursor" data-type="action" data-subtype="other" data-cmd_id="#stopId#" data-cmd_uid="#stopUid#" data-version="#stopVersion#" data-eqLogic_id="#eqLogic_id#">
+                <span style="font-size: 2em;font-weight: bold;" class="iconCmd"><i class="icon jeedomapp-fleche-bas-line"></i></span>stop
+            </div> 
+        </span>
+    </span>
+</div>
+        
+<script>
+$(function(){
+    if(#normalAvailable#){
+        $('.cmd[data-cmd_uid=#normalUid#]').on('click', function() {
+            jeedom.cmd.execute({id: '#normalId#'});
+        }); 
+    }
+    if(#absenceAvailable#){
+        $('.cmd[data-cmd_uid=#absenceUid#]').on('click', function() {
+            jeedom.cmd.execute({id: '#absenceId#'});
+        }); 
+    }
+    if(#heatingAvailable#){
+        $('.cmd[data-cmd_uid=#heatingUid#]').on('click', function() {
+            jeedom.cmd.execute({id: '#heatingId#'});
+        }); 
+    }
+    if(#stopAvailable#){
+        $('.cmd[data-cmd_uid=#stopUid#]').on('click', function() {
+            jeedom.cmd.execute({id: '#stopId#'});
+        }); 
+    }
+});
+</script>

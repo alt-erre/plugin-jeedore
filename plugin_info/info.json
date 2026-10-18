@@ -5,7 +5,7 @@
 	"changelog" : "https://github.com/rezolv-fr/jeedoredaemon-dotnet/blob/master/docs/index.md",
 	"documentation" : "https://github.com/rezolv-fr/jeedoredaemon-dotnet/blob/master/docs/index.md",
 	"licence": "MIT License",
-    "author" : "Nicolas Arfeuil",
+    "author" : "Nicolas Arfeuil, Aurélien Leovant (alt-erre)",
     "require" : "3.0",
     "category": "automation protocol",
 	"hasOwnDeamon": true,

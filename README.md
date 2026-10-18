@@ -78,6 +78,5 @@ jeedore/
 ## Crédits et Licence
 
 - **Auteur original du plugin et du démon .NET (`Rezolv.JeeDore.Server`)** : **Nicolas Arfeuil** ([rezolv-fr / jeedoredaemon-dotnet](https://github.com/rezolv-fr/jeedoredaemon-dotnet)) — un grand merci pour le travail de rétro-ingénierie du protocole Delta Dore Tydom et la création initiale du plugin JeeDore.
-- **Adaptation et modernisation Jeedom 4.4+ / PHP 8+** : Corrections d'affichage des icônes, compatibilité Packery/FontAwesome 5, synchronisation dynamique des catégories d'usage Tydom et documentation complète du code.
+- **Adaptation et modernisation Jeedom 4.4+ / PHP 8+** : **Aurélien Leovant** ([alt-erre](https://github.com/alt-erre)) — corrections d'affichage des icônes, compatibilité Packery/FontAwesome 5, synchronisation dynamique des catégories d'usage Tydom et documentation complète du code.
 - **Licence** : Distribué sous licence **MIT** (conformément au projet d'origine défini dans [`plugin_info/info.json`](plugin_info/info.json)).
-

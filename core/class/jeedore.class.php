@@ -396,9 +396,14 @@ class jeedore extends eqLogic
 			case 'box':
 				return $this->resolveImage("tydom1.png", $theme);
 			case 'light':
+			case 'plug':
 				$cmd = jeedoreCmd::byLogicalId("level".$this->getLogicalId());
 				if(!$cmd || !isset($cmd[0])){
-					return $this->resolveImage("light_0.png", $theme);
+					$plugCmd = $this->getCmd('info', "plugCmd".$this->getLogicalId());
+					if($plugCmd && ($plugCmd->getValue() == 'ON' || $plugCmd->getValue() == '1' || $plugCmd->getValue() == 'True')){
+						return $this->resolveImage("light_100.png", $theme);
+					}
+					return $tags === 'plug' ? $this->resolveImage("interrupteur.png", $theme) : $this->resolveImage("light_0.png", $theme);
 				}
 				$val = $cmd[0]->getValue();
 				if(!is_numeric($val)){

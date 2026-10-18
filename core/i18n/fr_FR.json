@@ -40,9 +40,13 @@
         "Configuration": "Configuration",
         "Alarm": "Alarme",
         "Hvac": "Chauffage",
+        "Hvac & Sensor": "Chauffage & Capteurs",
         "Light": "Lumière",
+        "Plug": "Prise",
         "Shutter": "Volet roulant",
+        "Door": "Porte / Ouvrant",
         "Window": "Fenêtre",
+        "Toggle": "Interrupteur",
         "Other": "Autre",
         "Awning": "Store",
         "Not managed": "Non géré"

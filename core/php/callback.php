@@ -39,30 +39,7 @@ if($_GET["cmd"] == 'geteqlogic'){
                 $cmd->save();
             }
         }
-        if(
-            $endpoint->usage == '' || 
-            $endpoint->usage == 'shutter' || 
-            $endpoint->usage == 'swingShutter' || 
-            $endpoint->usage == 'awning' || 
-            $endpoint->usage == 'garage_door' || 
-            $endpoint->usage == 'gate' || 
-            $endpoint->usage == 'light' || 
-            $endpoint->usage == 'not-managed' || 
-            $endpoint->usage == 'alarm' || 
-            $endpoint->usage == 'others' || 
-            $endpoint->usage == 'conso' || 
-            $endpoint->usage == 'klineDoor' ||
-            $endpoint->usage == 'klineActiveHome' ||
-            $endpoint->usage == 'klineShutter' || 
-            $endpoint->usage == 'klineWindowOthers' ||
-            $endpoint->usage == 'klineWindowFrench' || 
-            $endpoint->usage == 'klineWindowSliding' || 
-            $endpoint->usage == 'window' || 
-            $endpoint->usage == 'windowFrench' ||
-            $endpoint->usage == 'hvac-electric' || 
-            $endpoint->usage == 'hvac-boiler' || 
-            $endpoint->usage == 'hvac-central' || 
-            $endpoint->usage == 'belmDoor' ){ 
+        else {
             $eqLogic = jeedore::byLogicalId($endpoint->id, 'jeedore');
             if(!is_object($eqLogic)){
                 log::add ('jeedore','debug',"Adding new eqLogic-".$endpoint->usage." :".$endpoint->id);
@@ -72,16 +49,15 @@ if($_GET["cmd"] == 'geteqlogic'){
                 $eqLogic->setIsEnable(1);
                 $eqLogic->setIsVisible(1);
                 $eqLogic->setCategory('automatism', 1);
-                $eqLogic->setTags($endpoint->usage);
+            } else if ($eqLogic->getTags() !== $endpoint->usage) {
+                log::add('jeedore', 'debug', "Updating usage tag for eqLogic " . $endpoint->id . " from '" . $eqLogic->getTags() . "' to '" . $endpoint->usage . "'");
             }
+            $eqLogic->setTags($endpoint->usage);
             $eqLogic->setEqType_name('jeedore');
             if($endpoint->usage == 'hvac-central'){
                 $eqLogic->setConfiguration('hvacids', $endpoint->configuration);
             }
             $eqLogic->save();
-        }
-        else{
-            log::add ('jeedore','debug',"not yet implemented : ".$endpoint->usage);
         }
     }
 }

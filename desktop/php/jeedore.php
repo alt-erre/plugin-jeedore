@@ -14,6 +14,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
 $alarms = array();
 $hvacs = array();
 $lights = array();
+$plugs = array();
 $shutters = array();
 $others = array();
 $windows = array();
@@ -36,10 +37,15 @@ foreach ($eqLogics as $eqLogic) {
         case 'hvac-boiler':
         case 'hvac-electric':
         case 'hvac-central':
+        case 'boiler':
+        case 'thermostat':
             array_push($hvacs, $eqLogic);
             break;
         case 'light':
             array_push($lights, $eqLogic);
+            break;
+        case 'plug':
+            array_push($plugs, $eqLogic);
             break;
         case 'toggle':
             array_push($toggles, $eqLogic);
@@ -47,6 +53,8 @@ foreach ($eqLogics as $eqLogic) {
         case 'belmDoor':
         case 'klineDoor':
         case 'door':
+        case 'garage_door':
+        case 'gate':
             array_push($doors, $eqLogic);
             break;    
         case 'not-managed':
@@ -141,6 +149,9 @@ function displayCategory($eqLogics, $title)
         }
         if(count($lights)>0){
             displayCategory($lights, 'Light');
+        }
+        if(count($plugs)>0){
+            displayCategory($plugs, 'Plug');
         }
         if(count($shutters)>0){
             displayCategory($shutters, 'Shutter');

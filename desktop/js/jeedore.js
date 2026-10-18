@@ -1,18 +1,32 @@
+/**
+ * Script JavaScript de la page d'administration du plugin JeeDore (Desktop).
+ *
+ * Gère les interactions utilisateur :
+ *  - Bouton de synchronisation des équipements avec la box Tydom.
+ *  - Ouverture de la modale de personnalisation des messages d'historique.
+ *  - Affichage et édition d'un équipement et de la liste de ses commandes (info / action).
+ *  - Identification physique d'un équipement ("Identify").
+ */
+
+// Déclenche la synchronisation des équipements au clic sur le bouton principal
 $('#bt_synchronizeEquipments').on('click', function () {
     synchronizeEquipments();
 });
 
+// Affiche ou masque la colonne latérale de navigation rapide entre équipements
 $("#butCol").click(function(){
     $("#hidCol").toggle("slow");
     document.getElementById("listCol").classList.toggle('col-lg-12');
     document.getElementById("listCol").classList.toggle('col-lg-10');
 });
 
+// Ouvre la fenêtre modale permettant de personnaliser les messages d'historique d'alarme
 $('#bt_editevents').on('click', function () {
   $('#md_modal2').dialog({title: "{{Manage histo messages}}"});
   $('#md_modal2').load('index.php?v=d&plugin=jeedore&modal=histo&id=jeedore').dialog('open');
 });
 
+// Gestion de la sélection d'un équipement depuis la barre latérale
 $(".li_eqLogic").on('click', function (event) {
   if (event.ctrlKey) {
     var type = $('body').attr('data-page')
@@ -77,6 +91,7 @@ $(".li_eqLogic").on('click', function (event) {
   return false;
 });
 
+// Envoie une commande d'identification physique ("identify") à l'équipement affiché
 $('.eqLogicAction[data-action=identify]').on('click', function () {
   $.ajax({
     type: "POST",
@@ -101,6 +116,7 @@ $('.eqLogicAction[data-action=identify]').on('click', function () {
   });
 })
 
+// Sélecteur de commande Jeedom de type "info" dans le tableau des commandes
 $("#table_commands").delegate(".listEquipementInfo", 'click', function () {
   var el = $(this);
     jeedom.cmd.getSelectModal({cmd: {type: 'info'}}, function (result) {
@@ -109,6 +125,7 @@ $("#table_commands").delegate(".listEquipementInfo", 'click', function () {
   });
 });
   
+// Sélecteur de commande Jeedom de type "action" dans le tableau des commandes
 $("#table_commands").delegate(".listEquipementAction", 'click', function () {
   var el = $(this);
   var subtype = $(this).closest('.cmd').find('.cmdAttr[data-l1key=subType]').value();
@@ -118,13 +135,20 @@ $("#table_commands").delegate(".listEquipementAction", 'click', function () {
   });
 });
   
+// Active le tri par glisser-déposer (drag & drop) des lignes du tableau des commandes
 $("#table_commands").sortable({axis: "y", cursor: "move", items: ".cmd", placeholder: "ui-state-highlight", tolerance: "intersect", forcePlaceholderSize: true});
 
+/**
+ * Ajoute dynamiquement une ligne de commande (info ou action) dans le tableau HTML `#table_commands`.
+ *
+ * @param {Object} _cmd Objet représentant la commande Jeedom à afficher.
+ */
 function addCmdToTable(_cmd) {
   if (!isset(_cmd)) {
       var _cmd = {configuration: {}};
   }
   
+  // Rendu d'une commande de type "info" (capteur / retour d'état)
   if (init(_cmd.type) == 'info') {
     var tr = '<tr class="cmd" data-cmd_id="' + init(_cmd.id) + '">';
     tr += '<td>';
@@ -164,6 +188,7 @@ function addCmdToTable(_cmd) {
     $('#table_commands tbody tr:last').setValues(_cmd, '.cmdAttr');
   }
 
+  // Rendu d'une commande de type "action" (pilotage d'équipement)
   if (init(_cmd.type) == 'action') {
     var tr = '<tr class="cmd" data-cmd_id="' + init(_cmd.id) + '">';
     tr += '<td>';
@@ -225,6 +250,10 @@ $('body').on('jeedore::notfound', function (_event,_options) {
 }
 
 
+/**
+ * Appelle en AJAX l'action `synchronize` pour demander au démon .NET de récupérer
+ * l'ensemble des équipements, leurs usages (catégories) et leurs états depuis la box Tydom.
+ */
 function synchronizeEquipments()
 {
   $.ajax({

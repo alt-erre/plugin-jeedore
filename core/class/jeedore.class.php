@@ -5,14 +5,26 @@ require_once dirname(__FILE__) . '/jeedoreDaemon.class.php';
 
 /**
  * Define a DeltaDore eqLogic.
+ * Classe principale du plugin JeeDore (hérite de eqLogic).
+ * Gère les dépendances, le cycle de vie du démon .NET, les crons de relevés énergétiques,
+ * la synchronisation des équipements Tydom et la résolution des icônes d'état.
  */
 class jeedore extends eqLogic
 {
+	/** @var string Fichier de progression de l'installation des dépendances */
 	const dependency_files 		= '/tmp/jeedore_dependencies';
+	/** @var string Fichier JSON de configuration de connexion à la box Tydom lu par le démon */
 	const configuration_file 	= __DIR__ . '/../../jeedore_config.json';
+	/** @var string Fichier JSON contenant l'URL et le port de callback Jeedom lu par le démon */
 	const configFilename 		= __DIR__ . '/../../jeedore_jeedomconfig.json';
+	/** @var string Fichier JSON contenant les tâches périodiques (ex: energyInstant) gérées par le démon */
 	const cronFilename 		= __DIR__ . '/../../jeedore_cron.json';
 
+	/**
+	 * Retourne l'état des dépendances du plugin pour l'interface Jeedom.
+	 *
+	 * @return array Informations sur l'état des dépendances ('ok'/'nok', log, fichier de progression)
+	 */
     public static function dependancy_info() {
 		log::add('jeedore', 'debug', 'dependancy_info...');
 		$return = array();
@@ -22,6 +34,11 @@ class jeedore extends eqLogic
 		return $return;
 	}
 
+	/**
+	 * Lance le script shell d'installation des dépendances système (ressources/install_apt.sh).
+	 *
+	 * @return array Chemin du script à exécuter et chemin du fichier de log associé
+	 */
     public static function dependancy_install() {
 		log::add('jeedore', 'debug', 'dependancy_install...');
 		log::remove(__CLASS__ . '_update');
@@ -33,6 +50,11 @@ class jeedore extends eqLogic
 			'log' => log::getPathToLog(__CLASS__ . '_update'));
 	}
 
+	/**
+	 * Vérifie si le démon .NET JeeDore est en cours d'exécution via son fichier PID.
+	 *
+	 * @return array État du démon ('state' => 'ok'|'nok', 'launchable' => 'ok', 'log' => 'jeedoredaemon')
+	 */
 	public static function deamon_info() {
 		$return = array();
 		$return['log'] = 'jeedoredaemon';
@@ -51,6 +73,10 @@ class jeedore extends eqLogic
 		return $return;
 	}
 
+	/**
+	 * Cron exécuté toutes les heures par Jeedom.
+	 * Demande au démon l'historique énergétique journalier (période 'DAY') pour chaque équipement compatible.
+	 */
 	public static function cronHourly() {
 		$energyHistoDeviceIds = config::byKey('energyHisto', 'jeedore');
 		if(!isset($energyHistoDeviceIds)){
@@ -86,12 +112,19 @@ class jeedore extends eqLogic
 		}
 	}
 
+	/**
+	 * Cron exécuté une fois par jour par Jeedom.
+	 * Déclenche les relevés d'historique, de répartition et d'index énergétique.
+	 */
 	public static function cronDaily() {
 		jeedore::cronEnergyHisto();
 		jeedore::cronEnergyDistrib();
 		jeedore::cronEnergyIndex();
 	}
 
+	/**
+	 * Récupère les index de consommation (électricité, gaz, températures) auprès du démon.
+	 */
 	public static function cronEnergyIndex(){
 		$energyIndexDeviceIds = config::byKey('energyIndex', 'jeedore');
 		if(!isset($energyIndexDeviceIds)){
@@ -115,6 +148,9 @@ class jeedore extends eqLogic
 		}
 	}
 
+	/**
+	 * Récupère la répartition énergétique mensuelle et annuelle (électricité et gaz) auprès du démon.
+	 */
 	public static function cronEnergyDistrib(){
 		$energyDistribDeviceIds = config::byKey('energyDistrib', 'jeedore');
 		if(!isset($energyDistribDeviceIds)){
@@ -144,6 +180,9 @@ class jeedore extends eqLogic
 		}
 	}
 
+	/**
+	 * Récupère l'historique énergétique (hors période 'DAY' qui est traitée par cronHourly).
+	 */
 	public static function cronEnergyHisto(){
 		$energyHistoDeviceIds = config::byKey('energyHisto', 'jeedore');
 		if(!isset($energyHistoDeviceIds)){
@@ -179,6 +218,14 @@ class jeedore extends eqLogic
 		}
 	}
 
+	/**
+	 * Démarre le démon .NET JeeDore adapté à l'architecture matérielle détectée (x86, arm, arm64).
+	 * Attend jusqu'à 30 secondes la création du fichier PID confirmant le démarrage.
+	 *
+	 * @param bool $_debug Mode debug (optionnel)
+	 * @return bool        True si le démon a démarré avec succès, False sinon
+	 * @throws Exception   Si le démon n'est pas lançable
+	 */
 	public static function deamon_start($_debug = false) {
 		self::deamon_stop();
 		$deamon_info = self::deamon_info();
@@ -219,6 +266,10 @@ class jeedore extends eqLogic
 		return true;
 	}
 
+	/**
+	 * Arrête le démon .NET JeeDore en tuant le processus identifié par le fichier PID
+	 * et en libérant le port socket TCP (13666 par défaut).
+	 */
 	public static function deamon_stop() {
 
 		$pid_file = jeedom::getTmpFolder('jeedore') . '/jeedoredaemon.pid';
@@ -230,6 +281,11 @@ class jeedore extends eqLogic
 		system::fuserk(config::byKey('socketport', 'jeedore', 13666));
 	}
 
+	/**
+	 * Génère les fichiers JSON de configuration lus par le démon .NET :
+	 * - jeedore_config.json (paramètres réseau, IP/MAC Tydom, mot de passe, code d'alarme)
+	 * - jeedore_jeedomconfig.json (URL et port de callback Jeedom)
+	 */
 	public static function createConfigurationFile(){
 		$network = config::byKey('network', 'jeedore');
 		$ip = config::byKey('ip', 'jeedore');
@@ -269,6 +325,14 @@ class jeedore extends eqLogic
 		chmod(jeedore::configFilename, 0777);
 	}
 
+	/**
+	 * Synchronise l'ensemble des équipements et commandes depuis la box Tydom via le démon :
+	 * 1. geteqlogics      -> récupère les équipements et leurs catégories (usage)
+	 * 2. getcmds          -> récupère les métadonnées des commandes (/devices/meta)
+	 * 3. getdevicescmeta  -> récupère les métadonnées de consommation (/devices/cmeta)
+	 * 4. geteqdata        -> récupère les états actuels de tous les équipements (/devices/data)
+	 * 5. getinfo          -> récupère les informations système de la box Tydom (/info)
+	 */
 	public static function synchronizeEquipments(){
 		log::add('jeedore', 'debug', 'Refreshing all devices...');
 
@@ -286,6 +350,11 @@ class jeedore extends eqLogic
 		log::add('jeedore', 'debug', 'All devices has been refreshed...');
 	}
 
+	/**
+	 * Envoie une commande d'identification visuelle/sonore à un équipement Tydom (clignotement).
+	 *
+	 * @param string $logicalId Identifiant logique Tydom de l'équipement (ex: '123456#123456')
+	 */
 	public static function identify($logicalId){
 		log::add('jeedore', 'debug', 'identify');
 
@@ -295,13 +364,29 @@ class jeedore extends eqLogic
 		JeedoreDaemon::execute('identify', $parameters);
 	}
 
+	/** @var bool Indique si la vérification des permissions sur le dossier d'images a déjà été effectuée */
 	private static $imagesChmodDone = false;
+	/** @var array Cache en mémoire des images encodées en base64 */
 	private static $imageCache = array();
 
+	/**
+	 * Surcharge de la méthode standard Jeedom eqLogic::getImage() pour retourner l'icône dynamique de l'équipement.
+	 *
+	 * @return string URI data:image/png;base64 ou chemin de l'icône
+	 */
 	public function getImage() {
 		return $this->getImageState();
 	}
 
+	/**
+	 * Résout une image d'équipement selon le thème actif ('light' ou 'dark'), avec repli automatique
+	 * sur 'light' si l'icône n'existe pas en 'dark', et encodage en data URI base64 pour éviter
+	 * les blocages HTTP 403 d'Apache sur le dossier ressources/ en Jeedom 4.2+.
+	 *
+	 * @param string      $filename Nom du fichier image (ex: 'shutter_50.png')
+	 * @param string|null $theme    Thème souhaité ('light' ou 'dark')
+	 * @return string               Image encodée en data:image/png;base64 ou chemin vers l'icône par défaut
+	 */
 	private function resolveImage($filename, $theme = null) {
 		if (!$theme) {
 			$theme = config::byKey('theme', 'jeedore');
@@ -342,6 +427,11 @@ class jeedore extends eqLogic
 		return 'plugins/jeedore/plugin_info/jeedore_icon.png';
 	}
 
+	/**
+	 * Détermine l'icône correspondant au type (tag/usage Tydom) et à l'état courant de l'équipement.
+	 *
+	 * @return string URI base64 ou chemin de l'image représentant l'état de l'équipement
+	 */
 	public function getImageState(){
 		$tags = $this->getTags();
 		$theme = config::byKey('theme', 'jeedore');

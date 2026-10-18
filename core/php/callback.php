@@ -1,15 +1,35 @@
 <?php
+/**
+ * Point d'entrée HTTP de retour (Callback) appelé par le démon .NET (Rezolv.JeeDore.Server).
+ *
+ * Le démon .NET maintient la connexion WebSocket permanente avec la box Delta Dore Tydom
+ * et pousse vers ce script (en POST JSON) tous les événements, états, équipements découverts
+ * et historiques en précisant l'action via le paramètre GET `cmd` :
+ *  - `geteqlogic`            : Création ou mise à jour des équipements et scénarios Tydom.
+ *  - `getcmd`                : Création/mise à jour de la structure des commandes d'un équipement.
+ *  - `getcmddata`            : Mise à jour en temps réel des valeurs des commandes (états).
+ *  - `box`                   : Création/mise à jour de l'équipement représentant la box Tydom.
+ *  - `gethistoric`           : Enregistrement d'un historique brut de valeurs datées.
+ *  - `gethistorictranslated` : Enregistrement d'un historique traduit via modèle (ex: événements alarme).
+ *  - `getinstant`            : Mise à jour de valeurs instantanées avec historisation immédiate.
+ *  - `pingBeat`              : Battement de cœur (heartbeat) confirmant que la connexion Tydom est active.
+ */
 require_once dirname(__FILE__) . "/../../../../core/php/core.inc.php";
 require_once dirname(__FILE__) . "/../class/jeedoreDaemon.class.php";
 require_once dirname(__FILE__) . "/../class/jeedore.class.php";
 
+// Lecture et décodage de la charge utile JSON envoyée en POST par le démon .NET
 $rawInput = file_get_contents('php://input');
 $daemon = json_decode($rawInput);
 
+// =========================================================================
+// 1. Découverte et synchronisation des équipements et scénarios (geteqlogic)
+// =========================================================================
 if($_GET["cmd"] == 'geteqlogic'){
     foreach($daemon as $k => $endpoint){
         log::add ('jeedore','debug',"Get from daemon :".$endpoint->usage." with id:".$endpoint->id);
         
+        // Cas particulier : scénario Tydom (création de l'équipement et de sa commande d'exécution "play")
         if($endpoint->usage == "scenario"){
             $eqLogic = jeedore::byLogicalId($endpoint->id, 'jeedore');
             $createPlayCommand = false;
@@ -39,9 +59,11 @@ if($_GET["cmd"] == 'geteqlogic'){
                 $cmd->save();
             }
         }
+        // Cas général : équipement standard Tydom (volet, lumière, prise, alarme, chauffage, ouvrant, etc.)
         else {
             $eqLogic = jeedore::byLogicalId($endpoint->id, 'jeedore');
             if(!is_object($eqLogic)){
+                // Nouvel équipement : initialisation avec le nom et l'état par défaut
                 log::add ('jeedore','debug',"Adding new eqLogic-".$endpoint->usage." :".$endpoint->id);
                 $eqLogic = new jeedore();
                 $eqLogic->setLogicalId($endpoint->id);
@@ -50,8 +72,10 @@ if($_GET["cmd"] == 'geteqlogic'){
                 $eqLogic->setIsVisible(1);
                 $eqLogic->setCategory('automatism', 1);
             } else if ($eqLogic->getTags() !== $endpoint->usage) {
+                // Équipement existant : journalise le changement d'usage (catégorie Tydom) sans écraser le nom ni l'objet parent
                 log::add('jeedore', 'debug', "Updating usage tag for eqLogic " . $endpoint->id . " from '" . $eqLogic->getTags() . "' to '" . $endpoint->usage . "'");
             }
+            // Mise à jour systématique du tag (catégorie d'usage Tydom : light, plug, shutter, etc.)
             $eqLogic->setTags($endpoint->usage);
             $eqLogic->setEqType_name('jeedore');
             if($endpoint->usage == 'hvac-central'){
@@ -62,6 +86,9 @@ if($_GET["cmd"] == 'geteqlogic'){
     }
 }
 
+// =========================================================================
+// 2. Mise à jour des valeurs d'état des commandes (getcmddata)
+// =========================================================================
 if($_GET["cmd"] == 'getcmddata'){
     
     $hvacCentral = jeedore::byLogicalId('hvac-central', 'jeedore');
@@ -82,6 +109,7 @@ if($_GET["cmd"] == 'getcmddata'){
             $cmd->setValue($endpoint->value);
 
 
+            // Masque automatiquement les zones d'alarme non utilisées ("UNUSED")
             $logicalIdPrefix = substr($cmd->getLogicalId(), 0, 10);
             if($endpoint->value === "UNUSED" &&
                 (
@@ -98,8 +126,10 @@ if($_GET["cmd"] == 'getcmddata'){
             }
 
             $cmd->save();
+            // Notifie Jeedom de la nouvelle valeur (déclenche les scénarios, widgets, etc.)
             $cmd->event($endpoint->value);
 
+            // Agrégation de l'état global pour le chauffage central (hvac-central) si toutes les zones concordent
             if($hvacCentral)
             {
                 $cmdstocheck = array('hvacMode', 'authorization');
@@ -149,6 +179,9 @@ if($_GET["cmd"] == 'getcmddata'){
     }
 }
 
+// =========================================================================
+// 3. Création et configuration des commandes d'équipements (getcmd)
+// =========================================================================
 $links = array();
 if($_GET["cmd"] == 'getcmd'){
     foreach($daemon as $k => $endpoint){
@@ -171,6 +204,7 @@ if($_GET["cmd"] == 'getcmd'){
             $cmd->setType($endpoint->type);
         }
 
+        // Détection d'une centrale d'alarme : enregistre son identifiant et le besoin d'authentification (code PIN)
         if($endpoint->name == 'setAlarmCmd'){
             log::add ('jeedore','debug',"An alarm is detected");
             $configFile = file_get_contents(jeedore::configuration_file);
@@ -199,6 +233,7 @@ if($_GET["cmd"] == 'getcmd'){
 
             log::add ('jeedore','debug', 'Alarm has been setup');
         }
+        // Détection des compteurs de consommation instantanée nécessitant un rafraîchissement périodique (cron)
         if(substr($endpoint->name, 0, 13)  == 'energyInstant'){
             if(
                 (substr($endpoint->name, 0, 17)  == 'energyInstantTi1I') ||
@@ -229,6 +264,7 @@ if($_GET["cmd"] == 'getcmd'){
             }
         }
 
+        // Application des métadonnées de la commande (valeurs possibles, bornes min/max, unité, historisation, type générique)
         if(property_exists($endpoint, "listValue")){
             $cmd->setConfiguration('listValue', $endpoint->listValue);
         }
@@ -258,6 +294,7 @@ if($_GET["cmd"] == 'getcmd'){
         }
         $cmd->setSubType($endpoint->subType);
         
+        // Inscription des équipements de suivi énergétique aux tâches planifiées (cronHourly / cronDaily)
         if(substr($endpoint->name, 0, 11)  == 'energyHisto'){
             AddCron($endpoint, 'energyHisto');
         }
@@ -273,6 +310,7 @@ if($_GET["cmd"] == 'getcmd'){
         }
         log::add ('jeedore','debug',"Saved command ".$endpoint->name." for id :".$endpoint->id );
     }
+    // Liaison entre les commandes "action" et leurs commandes "info" d'état associées
     foreach($links as $id => $logicalId)
     {
         $info = jeedoreCmd::byLogicalId($logicalId, 'info')[0];
@@ -287,10 +325,16 @@ if($_GET["cmd"] == 'getcmd'){
     }
 }
 
+// =========================================================================
+// 4. Informations système de la passerelle Tydom (box)
+// =========================================================================
 if($_GET["cmd"] == 'box'){
     UpsertBox($daemon);
 }
 
+// =========================================================================
+// 5. Réception d'historiques bruts (gethistoric)
+// =========================================================================
 if($_GET["cmd"] == 'gethistoric'){
     $historic = new history();
     $applyValueToCmd = is_array($daemon) && count($daemon)>0;
@@ -314,6 +358,9 @@ if($_GET["cmd"] == 'gethistoric'){
     }
 }
 
+// =========================================================================
+// 6. Réception d'historiques d'événements traduits (gethistorictranslated)
+// =========================================================================
 if($_GET["cmd"] == 'gethistorictranslated'){
     $applyValueToCmd = is_array($daemon) && count($daemon)>0;
     $forbiddenChars = array(":", " ", "-");
@@ -338,6 +385,7 @@ if($_GET["cmd"] == 'gethistorictranslated'){
             
             $templateKey = $dbhisto."-".$strs["#event#"];
             
+            // Récupération du modèle de message personnalisé ou, à défaut, de la traduction par défaut
             $template = config::byKey($templateKey, 'jeedore');
             if($template == ""){
                 $template = translate::loadTranslation('jeedore')[$dbhisto][$strs["#event#"]];
@@ -366,6 +414,9 @@ if($_GET["cmd"] == 'gethistorictranslated'){
     }
 }
 
+// =========================================================================
+// 7. Réception de mesures instantanées historisées (getinstant)
+// =========================================================================
 if($_GET["cmd"] == 'getinstant'){
     foreach($daemon as $k => $value){
         $cmds = cmd::byLogicalId($value->cmd, 'info');
@@ -399,6 +450,9 @@ if($_GET["cmd"] == 'getinstant'){
 }
 
 
+// =========================================================================
+// 8. Battement de cœur (pingBeat) de la passerelle Tydom
+// =========================================================================
 if($_GET["cmd"]== 'pingBeat'){
     $box = jeedore::byLogicalId($daemon->mac, 'jeedore');
     if(!$box){
@@ -410,6 +464,13 @@ if($_GET["cmd"]== 'pingBeat'){
     }
 }
 
+/**
+ * Ajoute l'identifiant d'un équipement dans la configuration Jeedom pour une clé de tâche planifiée (cron).
+ *
+ * @param object $endpoint Objet équipement/commande envoyé par le démon.
+ * @param string $key      Clé de configuration cron (`energyHisto`, `energyIndex`, `energyDistrib`).
+ * @return void
+ */
 function AddCron($endpoint, $key){
     log::add ('jeedore','debug',"Cron adding : ".$endpoint->name." for id :".$endpoint->id );
     
@@ -427,6 +488,12 @@ function AddCron($endpoint, $key){
     }
 }
 
+/**
+ * Crée ou met à jour l'équipement représentant la box Delta Dore Tydom ainsi que ses commandes d'information système.
+ *
+ * @param object $daemon Données d'état de la passerelle Tydom envoyées par le démon.
+ * @return void
+ */
 function UpsertBox($daemon){
     $box = jeedore::byLogicalId($daemon->mac, 'jeedore');
 
@@ -469,6 +536,18 @@ function UpsertBox($daemon){
     UpsertCmdBox($daemon, $box, 'pingBeat',         'binary',   null,                       false, true);
 }
 
+/**
+ * Crée ou met à jour une commande d'information spécifique sur l'équipement Box Tydom.
+ *
+ * @param object  $daemon       Données de la box envoyées par le démon.
+ * @param jeedore $box          Instance de l'équipement Box Tydom.
+ * @param string  $name         Nom de la commande.
+ * @param string  $subType      Sous-type Jeedom (`other`, `binary`, `numeric`).
+ * @param mixed   $value        Valeur à affecter à la commande.
+ * @param bool    $visible      Visibilité par défaut de la commande.
+ * @param bool    $isHistorized Indique si la commande doit être historisée.
+ * @return void
+ */
 function UpsertCmdBox($daemon, $box, $name, $subType, $value, $visible, $isHistorized){
     $cmd = cmd::byEqLogicIdCmdName($box->getId(), $name);
 

@@ -1,4 +1,12 @@
 <?php
+/**
+ * Vue principale (Desktop) de gestion des équipements du plugin JeeDore.
+ *
+ * Affiche :
+ *  - Les boutons d'action globaux (Synchroniser équipements, Configuration, Gérer les messages d'historique).
+ *  - La grille des équipements Delta Dore regroupés par catégorie d'usage Tydom (tag) avec leur icône d'état dynamique.
+ *  - Le formulaire d'édition d'un équipement et le tableau de ses commandes Jeedom.
+ */
 require_once dirname(__FILE__) . '/../../../../core/php/core.inc.php';
 require_once dirname(__FILE__) . '/../../core/class/jeedoreDaemon.class.php';
 
@@ -11,6 +19,7 @@ sendVarToJS('eqType', 'jeedore');
 $eqLogics = eqLogic::byType($plugin->getId());
 
 
+// Tableaux de regroupement des équipements par catégorie d'usage Tydom
 $alarms = array();
 $hvacs = array();
 $lights = array();
@@ -23,10 +32,12 @@ $notmanageds = array();
 $toggles = array();
 $doors = array();
 
+// Tri alphabétique par tag puis par nom (compatible PHP 8+)
 usort($eqLogics, function($a, $b) {
     return strcmp($a->getTags() . $a->getName(), $b->getTags() . $b->getName());
 });
 
+// Répartition de chaque équipement dans sa section selon le tag défini lors de la synchronisation Tydom
 foreach ($eqLogics as $eqLogic) {
     switch ($eqLogic->getTags())
     {
@@ -81,6 +92,13 @@ foreach ($eqLogics as $eqLogic) {
     }
 } 
 
+/**
+ * Génère le bloc HTML (légende + conteneur de tuiles Packery) pour une catégorie d'équipements.
+ *
+ * @param jeedore[] $eqLogics Liste des équipements appartenant à la catégorie.
+ * @param string    $title    Clé de traduction du titre de la catégorie.
+ * @return void
+ */
 function displayCategory($eqLogics, $title)
 {
     echo '<legend><i class="fas fa-table"></i> {{' . $title . '}}</legend>';
